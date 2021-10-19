@@ -1,0 +1,82 @@
+---
+title: "p8105_hw3_yw3773"
+output: github_document
+---
+```{r}
+library(tidyverse)
+library(lubridate)
+```
+
+## Problem 1
+```{r}
+library(p8105.datasets)
+data("instacart") 
+summary(instacart)
+```
+
+The Instacart data set contains `r ncol(instacart)` columns and `r nrow(instacart)` rows. The data sets has 15 variables which are `r names(instacart)`. Some of the key variables we are especially interested here include: 
+* "order_dow": the day of the week on which the order was placed. The number 0 to 6 represent Sunday to Saturday.
+
+* "order_hour_of_day": the hour of the day on which th order was placed (within 24 hours).
+
+* "product_name": the name of the product. For example, Spring Water, Bulgarian Yogurt.
+
+*"aisle": the name of the aisle. For example, fresh vegetables, lunch meat.
+
+```{r}
+#1 aisles number
+unique_aisles = unique(pull(instacart, aisle))
+num_aisles = length(unique_aisles)
+num_aisles
+tail(sort(table(pull(instacart, aisle))),1)
+
+#2 aisles plot
+aisles_plot = as.data.frame(table(pull(instacart, aisle))) %>%
+  filter(Freq > 10000) %>%
+  arrange(Freq)
+colnames(aisles_plot) = c("aisle", "num")
+###############################################################
+ggplot(aisles_plot, aes(aisle, num)) + geom_point() + theme(axis.text.x = element_text(angle = 50, hjust = 1) )
+
+#3 most pop product
+## backing ingredients
+baking_data = instacart %>%
+  filter(aisle == "baking ingredients") 
+most_pop_baking = as.data.frame(table(pull(baking_data, product_name))) %>%
+  arrange(Freq) %>%
+  filter(Freq > 335) %>%
+  mutate(aisle = "baking ingredients")
+
+## dog food care
+dog_data = instacart %>%
+  filter(aisle == "dog food care") 
+most_pop_dog = as.data.frame(table(pull(dog_data, product_name))) %>%
+  arrange(Freq) %>%
+  filter(Freq > 25) %>%
+  mutate(aisle = "dog food care")
+
+## packaged veg
+veg_data = instacart %>%
+  filter(aisle == "packaged vegetables fruits") 
+most_pop_veg = as.data.frame(table(pull(veg_data, product_name))) %>%
+  arrange(Freq) %>%
+  filter(Freq > 4965) %>%
+  mutate(aisle = "packaged vegetables fruits")
+
+## combine them
+com_most_pop = rbind(most_pop_baking, most_pop_dog, most_pop_veg) 
+colnames(com_most_pop) = c("product", "num", "aisle")
+com_most_pop = com_most_pop[,c(3,1,2)]
+
+#4 mean hour
+a = instacart %>%
+  select(product_name, order_dow, order_hour_of_day) %>%
+  filter(product_name == "Pink Lady Apples" | 
+           product_name == "Coffee Ice Cream" ) %>%
+  group_by(product_name, order_dow) %>%
+  summarize(mean_hour = mean(order_hour_of_day)) %>%
+  mutate(order_dow = order_dow + 1) %>% 
+  mutate(order_dow  = wday(order_dow, label = TRUE)) %>%
+  pivot_wider(names_from = order_dow, values_from = mean_hour)
+```
+
