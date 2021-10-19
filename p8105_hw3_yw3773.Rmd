@@ -7,11 +7,10 @@ library(tidyverse)
 library(lubridate)
 ```
 
-## Problem 1
+# Problem 1
 ```{r}
 library(p8105.datasets)
 data("instacart") 
-summary(instacart)
 ```
 
 The Instacart data set contains `r ncol(instacart)` columns and `r nrow(instacart)` rows. The data sets has 15 variables which are `r names(instacart)`. Some of the key variables we are especially interested here include: 
@@ -23,22 +22,31 @@ The Instacart data set contains `r ncol(instacart)` columns and `r nrow(instacar
 
 *"aisle": the name of the aisle. For example, fresh vegetables, lunch meat.
 
+## How many aisles are there, and which aisles are the most items ordered from?
 ```{r}
-#1 aisles number
 unique_aisles = unique(pull(instacart, aisle))
 num_aisles = length(unique_aisles)
-num_aisles
 tail(sort(table(pull(instacart, aisle))),1)
+```
+There are a total of `num_aisles` aisles, the aisle that the most items ordered from is fresh vegetables.
 
-#2 aisles plot
+
+## Make a plot that shows the number of items ordered in each aisle, limiting this to aisles with more than 10000 items ordered. Arrange aisles sensibly, and organize your plot so others can read it.
+```{r}
 aisles_plot = as.data.frame(table(pull(instacart, aisle))) %>%
   filter(Freq > 10000) %>%
   arrange(Freq)
 colnames(aisles_plot) = c("aisle", "num")
-###############################################################
-ggplot(aisles_plot, aes(aisle, num)) + geom_point() + theme(axis.text.x = element_text(angle = 50, hjust = 1) )
 
-#3 most pop product
+ggplot(aisles_plot, aes(aisle, num)) + geom_point(size = 0.8) +
+  ggtitle("The number of items ordered in each aisle vs. aisle") +
+  labs(y = "the number of items ordered", x = "aisle", 
+       caption = "Data from instacart for aisles with more than 10000 items ordered") +
+  theme(axis.text.x = element_text(angle = 60, hjust = 1) )
+```
+
+## Make a table showing the three most popular items in each of the aisles “baking ingredients”, “dog food care”, and “packaged vegetables fruits”. Include the number of times each item is ordered in your table.
+```{r}
 ## backing ingredients
 baking_data = instacart %>%
   filter(aisle == "baking ingredients") 
@@ -68,8 +76,13 @@ com_most_pop = rbind(most_pop_baking, most_pop_dog, most_pop_veg)
 colnames(com_most_pop) = c("product", "num", "aisle")
 com_most_pop = com_most_pop[,c(3,1,2)]
 
-#4 mean hour
-a = instacart %>%
+com_most_pop
+```
+
+## Make a table showing the mean hour of the day at which Pink Lady Apples and Coffee Ice Cream are ordered on each day of the week; format this table for human readers (i.e. produce a 2 x 7 table).
+
+```{r}
+week_hour_df = instacart %>%
   select(product_name, order_dow, order_hour_of_day) %>%
   filter(product_name == "Pink Lady Apples" | 
            product_name == "Coffee Ice Cream" ) %>%
@@ -78,5 +91,58 @@ a = instacart %>%
   mutate(order_dow = order_dow + 1) %>% 
   mutate(order_dow  = wday(order_dow, label = TRUE)) %>%
   pivot_wider(names_from = order_dow, values_from = mean_hour)
+
+week_hour_df
 ```
+
+# Problem 2
+```{r}
+library(p8105.datasets)
+data("brfss_smart2010") 
+```
+
+```{r}
+# data cleaning
+brfss_smart2010 = brfss_smart2010 %>%
+  janitor::clean_names() %>%
+  filter(topic == "Overall Health") %>%
+  filter(response %in% c("Poor","Fair", "Good", "Very good", "Excellent")) %>%
+  mutate(response = as.factor(response)) 
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
