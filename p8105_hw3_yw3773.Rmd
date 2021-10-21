@@ -2,7 +2,7 @@
 title: "p8105_hw3_yw3773"
 output: github_document
 ---
-```{r}
+```{r, message=FALSE}
 library(tidyverse)
 library(lubridate)
 ```
@@ -14,15 +14,16 @@ data("instacart")
 ```
 
 The Instacart data set contains `r ncol(instacart)` columns and `r nrow(instacart)` rows. The data sets has 15 variables which are `r names(instacart)`. Some of the key variables we are especially interested here include: 
+
 * "order_dow": the day of the week on which the order was placed. The number 0 to 6 represent Sunday to Saturday.
 
 * "order_hour_of_day": the hour of the day on which th order was placed (within 24 hours).
 
 * "product_name": the name of the product. For example, Spring Water, Bulgarian Yogurt.
 
-*"aisle": the name of the aisle. For example, fresh vegetables, lunch meat.
+* "aisle": the name of the aisle. For example, fresh vegetables, lunch meat.
 
-## How many aisles are there, and which aisles are the most items ordered from?
+### most items ordered from aisle
 ```{r}
 unique_aisles = unique(pull(instacart, aisle))
 num_aisles = length(unique_aisles)
@@ -30,22 +31,22 @@ tail(sort(table(pull(instacart, aisle))),1)
 ```
 There are a total of `num_aisles` aisles, the aisle that the most items ordered from is fresh vegetables.
 
-
-## Make a plot that shows the number of items ordered in each aisle, limiting this to aisles with more than 10000 items ordered. Arrange aisles sensibly, and organize your plot so others can read it.
+### the number of items ordered in each aisle
 ```{r}
-aisles_plot = as.data.frame(table(pull(instacart, aisle))) %>%
-  filter(Freq > 10000) %>%
-  arrange(Freq)
-colnames(aisles_plot) = c("aisle", "num")
-
-ggplot(aisles_plot, aes(aisle, num)) + geom_point(size = 0.8) +
+instacart %>%
+  group_by(aisle) %>%
+  summarize(n_obs = n()) %>%
+  filter(n_obs > 10000) %>%
+  mutate(aisle = fct_reorder(aisle, n_obs)) %>%
+  arrange(desc(n_obs)) %>%
+  ggplot(aes(aisle, n_obs)) + geom_point(size = 0.8) +
   ggtitle("The number of items ordered in each aisle vs. aisle") +
   labs(y = "the number of items ordered", x = "aisle", 
        caption = "Data from instacart for aisles with more than 10000 items ordered") +
   theme(axis.text.x = element_text(angle = 60, hjust = 1) )
 ```
 
-## Make a table showing the three most popular items in each of the aisles “baking ingredients”, “dog food care”, and “packaged vegetables fruits”. Include the number of times each item is ordered in your table.
+### the three most popular items in each of the aisles
 ```{r}
 ## backing ingredients
 baking_data = instacart %>%
@@ -76,12 +77,15 @@ com_most_pop = rbind(most_pop_baking, most_pop_dog, most_pop_veg)
 colnames(com_most_pop) = c("product", "num", "aisle")
 com_most_pop = com_most_pop[,c(3,1,2)]
 
-com_most_pop
+knitr::kable(com_most_pop)
 ```
 
-## Make a table showing the mean hour of the day at which Pink Lady Apples and Coffee Ice Cream are ordered on each day of the week; format this table for human readers (i.e. produce a 2 x 7 table).
+The top three most popular items in "baking ingredients" are cane sugar, pure baking soda and light brown sugar. The top three most popular items in "dog food care" are small dog biscuits, organix chicken & brown rice recipe, snack sticks chicken & rice recipe dog treats. The top three most popular items in "packaged vegetables fruits" are organic blueberries, organic raspberries and organic baby spinach.
 
-```{r}
+
+### the mean hour of the day at which Pink Lady Apples and Coffee Ice Cream
+
+```{r, message=FALSE}
 week_hour_df = instacart %>%
   select(product_name, order_dow, order_hour_of_day) %>%
   filter(product_name == "Pink Lady Apples" | 
@@ -92,8 +96,11 @@ week_hour_df = instacart %>%
   mutate(order_dow  = wday(order_dow, label = TRUE)) %>%
   pivot_wider(names_from = order_dow, values_from = mean_hour)
 
-week_hour_df
+knitr::kable(week_hour_df)
 ```
+
+For Pink Lady Apples, the day with the highest mean hour is Tuesday which is 15.38. For Coffee Ice Cream, the day with the highest mean hour is Wednesday which is 14.25.
+
 
 # Problem 2
 ```{r}
@@ -107,41 +114,116 @@ brfss_smart2010 = brfss_smart2010 %>%
   janitor::clean_names() %>%
   filter(topic == "Overall Health") %>%
   filter(response %in% c("Poor","Fair", "Good", "Very good", "Excellent")) %>%
-  mutate(response = as.factor(response)) 
+  mutate(response = as.factor(response)) %>%
+  mutate(state = locationabbr) %>%
+  select(-locationabbr)
+  
 ```
 
+### which states were observed at 7 or more locations
+```{r}
+state_02 = brfss_smart2010 %>%
+  filter(year == 2002) %>%
+  group_by(state) %>%
+  summarize(count = n_distinct(locationdesc)) %>%
+  filter(count >= 7)
+
+state_10 = brfss_smart2010 %>%
+  filter(year == 2010) %>%
+  group_by(state) %>%
+  summarize(count = n_distinct(locationdesc)) %>%
+  filter(count >= 7)
+```
+
+In 2002, the sates that were observed at 7 or more locations are `r pull(state_02, state)`. In 2010, the states that were observed at 7 or more locations are `r pull(state_10, state)`.
+
+### excellent response only, data_value over years
+```{r, message=FALSE}
+excellent_df = brfss_smart2010 %>%
+  filter(response == "Excellent") %>%
+  group_by(state) %>%
+  summarize(mean_data_value = mean(data_value, na.rm = TRUE)) 
+
+knitr::kable(head(excellent_df))
+
+brfss_smart2010 %>%
+  filter(response == "Excellent") %>%
+  group_by(state, year) %>%
+  summarize(mean_data_value = mean(data_value)) %>%
+  ggplot(aes(x = year, y = mean_data_value, color = state)) + 
+  geom_line() +
+  labs(title = "The average value over time for \n each state") 
+```
+
+From the constructed data set, the state with the highest average data_value across locations is DC. From the "spaghetti" plot we can see that most of the average values across time are around 22.5.
+
+### distribution of data_value for responses (“Poor” to “Excellent”) among locations in NY State.
+
+```{r}
+brfss_smart2010 %>%
+  filter(year == 2006 | year == 2010, state == "NY") %>%
+  ggplot(aes(x = data_value, fill = response)) +
+  geom_density(alpha = 0.5) +
+  facet_grid(.~year) +
+  labs(title = "The distribution of data_value for response in NY \n 
+       in 2006 and 2010")
+  
+```
+
+From the two plots, we can see that most of the distributions are approximate normal, except the distributions of the poor response.
 
 
+# Problem 3
 
+### data cleaning
+```{r, message=FALSE}
+# data cleaning
+acce_data = read_csv("accel_data.csv") %>%
+  janitor::clean_names() %>%
+  mutate(weekday_weekend = ifelse(day %in% c("Saturday", "Sunday"), "weekend", "weekday")) %>%
+  select(week, day_id, day, weekday_weekend, everything())
+```
 
+The resulting data contain `r ncol(acce_data)` columns which includes week, day_id, day, weekday_weekend, and 1440 activity counts for each minute of a 24-hour day starting at midnight. It contain `r nrow(acce_data)` rows which are the number of days observed.
 
+### total activity for each day
+```{r, message=FALSE}
+total_act_df = acce_data %>%
+  pivot_longer(activity_1:activity_1440, 
+               names_to = "minute", 
+               names_prefix = "activity_", 
+               values_to = "activity") %>%
+  mutate(minite = as.numeric(minute)) %>%
+  group_by(day_id, weekday_weekend) %>%
+  summarize(total_activity = sum(activity))
 
+knitr::kable(head(total_act_df))
 
+total_act_df %>% 
+  ggplot(aes(x = day_id, y = total_activity, color = weekday_weekend)) +
+  geom_line() + labs(title = "The total activity of 35 days with weekday and weekend")
+```
 
+There is no very obvious trend that I can see, I tried to plot a graph of he total activity of 35 days with weekday and weekend, most of the total activities in weekends are lower than weekdays
 
+### 24-hour activity time for each day
+```{r, message=FALSE}
+acce_data %>%
+  pivot_longer(activity_1:activity_1440, 
+               names_to = "minute", 
+               names_prefix = "activity_", 
+               values_to = "activity") %>%
+  mutate(minute = as.numeric(minute)) %>%
+  ggplot(aes(x = minute, y = activity, color = day)) + geom_point(alpha = 0.1, size = 0.5) +
+  scale_x_continuous(
+    breaks = c(seq(from = 0, to = 1440, by = 144)),
+    labels = c((seq(from = 0, to = 1440, by = 144)))
+  ) + geom_smooth(se = FALSE, size = 0.3) +
+  labs(title = "The activity across time for each day")
 
+```
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+From the plot we can see that the activity tends to be higher during the morning 9 AM to 12 PM and also during the evening from 8:30 PM to 11 PM. 
 
 
 
