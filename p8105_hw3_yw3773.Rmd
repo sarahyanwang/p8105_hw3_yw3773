@@ -46,6 +46,8 @@ instacart %>%
   theme(axis.text.x = element_text(angle = 60, hjust = 1) )
 ```
 
+This plot can clearly shows that the aisle that the most items ordered from is fresh vegetables.
+
 ### the three most popular items in each of the aisles
 ```{r}
 ## backing ingredients
